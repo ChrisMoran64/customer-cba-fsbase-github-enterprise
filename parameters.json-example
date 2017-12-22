@@ -1,0 +1,83 @@
+[
+  {
+    "ParameterValue": "cns-ga-prod-oc-mgmt-github",
+    "ParameterKey": "KeyPairName"
+  },
+  {
+    "ParameterValue": "internal-cns-ga-pr-LoadBala-1059476S4MF9G-1903184126.ap-southeast-2.elb.amazonaws.com:3128",
+    "ParameterKey": "ProxyEndpoint"
+  },
+  {
+    "ParameterValue": "vpc-97aad9f3",
+    "ParameterKey": "VpcId"
+  },
+  {
+    "ParameterValue": "cns-ga-prod-oc-mgmt-github",
+    "ParameterKey": "QSS3BucketName"
+  },
+  {
+    "ParameterValue": "bla/",
+    "ParameterKey": "QSS3KeyPrefix"
+  },
+
+  {
+    "ParameterValue": "github-enterprise-dev.ghl",
+    "ParameterKey": "GHELicense"
+  },
+  {
+    "ParameterValue": "subnet-a4f2dbd2",
+    "ParameterKey": "SubnetId"
+  },
+  {
+    "ParameterValue": "",
+    "ParameterKey": "ProvisionedIops"
+  },
+  {
+    "ParameterValue": "172.16.19.0/24",
+    "ParameterKey": "AccessCIDR"
+  },
+  {
+    "ParameterValue": "Passw0rd",
+    "ParameterKey": "ManagementPassword"
+  },
+  {
+    "ParameterValue": "172.16.19.0/24",
+    "ParameterKey": "ManagementCidr"
+  },
+  {
+    "ParameterValue": "initial-repository",
+    "ParameterKey": "InitialRepository"
+  },
+  {
+    "ParameterValue": "gp2",
+    "ParameterKey": "VolumeType"
+  },
+  {
+    "ParameterValue": "admin@git.mushroomcloud.us",
+    "ParameterKey": "SiteAdminUserEmail"
+  },
+  {
+    "ParameterValue": "adminuser",
+    "ParameterKey": "SiteAdminUsername"
+  },
+  {
+    "ParameterValue": "Passw0rd",
+    "ParameterKey": "SiteAdminUserPassword"
+  },
+  {
+    "ParameterValue": "m3.xlarge",
+    "ParameterKey": "InstanceType"
+  },
+  {
+    "ParameterValue": "50",
+    "ParameterKey": "VolumeSize"
+  },
+  {
+    "ParameterValue": "CBA",
+    "ParameterKey": "InitialOrganization"
+  },
+  {
+    "ParameterValue": "ga-prod-config-github-is-cba/license",
+    "ParameterKey": "LicenseLocation"
+  }
+]

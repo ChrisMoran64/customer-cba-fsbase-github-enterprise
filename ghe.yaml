@@ -1,0 +1,515 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: >
+  (qs-1nae5pfk3) Git Hub Enterprise Quickstart
+# Apache 2.0 (Please do not remove) May,16,2017
+
+Conditions:
+  Io1Set:
+    Fn::Equals:
+      - Ref: VolumeType
+      - io1
+Mappings:
+  AWSAMIRegionMap:
+    AMI:
+      GHE29: GitHub Enterprise 2.9.4
+    ap-northeast-1:
+      AMI: ami-f66b5d91
+    ap-northeast-2:
+      AMI: ami-5bbb6635
+    ap-south-1:
+      AMI: ami-72f0821d
+    ap-southeast-1:
+      AMI: ami-1a73c979
+    ap-southeast-2:
+      AMI: ami-060f0465
+    ca-central-1:
+      AMI: ami-35952951
+    eu-central-1:
+      AMI: ami-5ef02f31
+    eu-west-1:
+      AMI: ami-5ba5a73d
+    eu-west-2:
+      AMI: ami-7cb3a718
+    sa-east-1:
+      AMI: ami-5f462a33
+    us-east-1:
+      AMI: ami-8d6c019b
+    us-east-2:
+      AMI: ami-b80126dd
+    us-west-1:
+      AMI: ami-00a58260
+    us-west-2:
+      AMI: ami-155cc475
+
+Parameters:
+  ProxyEndpoint:
+    Type: String
+  AccessCIDR:
+    AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})"
+    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+    Description: The IP address range that can be used to access to the EC2 instance
+    MaxLength: '18'
+    MinLength: '9'
+    Type: String
+  GHELicense:
+    Description: 'GitHub Enterprise License file that is uploaded to the License S3
+      bucket. Sign up for a trial license here: https://enterprise.github.com/trial'
+    Type: String
+  InitialOrganization:
+    Description: The initial organization to hold the GitHub Enterprise repository
+    Default: initial-organization
+    Type: String
+  InitialRepository:
+    Description: The initial repository to create
+    Default: initial-repository
+    Type: String
+  InstanceType:
+    AllowedValues:
+      - m3.xlarge
+      - m3.2xlarge
+      - m4.xlarge
+      - m4.2xlarge
+      - c3.2xlarge
+      - c3.4xlarge
+      - c3.8xlarge
+      - c4.2xlarge
+      - c4.4xlarge
+      - c4.8xlarge
+      - r3.large
+      - r3.xlarge
+      - r3.2xlarge
+      - r3.4xlarge
+      - r3.8xlarge
+    ConstraintDescription: 'must be a valid EC2 instance type for GitHub Enterprise:
+      m3.xlarge, m3.2xlarge, m4.xlarge, m4.2xlarge, c3.2xlarge, c3.4xlarge, c3.8xlarge,
+      c4.2xlarge, c4.4xlarge, c4.8xlarge, r3.large, r3.xlarge, r3.xlarge, r3.2xlarge,
+      r3.4xlarge, or r3.8xlarge.'
+    Default: m3.xlarge
+    Description: WebServer EC2 instance type
+    Type: String
+  KeyPairName:
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
+    Type: AWS::EC2::KeyPair::KeyName
+  LicenseLocation:
+    Description: Name of S3 bucket containing GitHub Enterprise license
+    Type: String
+  ManagementPassword:
+    AllowedPattern: "(?=.*\\d)(?=.*[a-z])(?=.*[A-Z])[a-zA-Z0-9]*"
+    ConstraintDescription: Passwords must be at least 7 characters long and include
+      at least one number and one upper case letter.
+    Description: Set the Console password for Github Enterprise (Passwords must be
+      at least 7 characters long and include at least one number and one upper case
+      letter)
+    MinLength: '7'
+    NoEcho: 'True'
+    Type: String
+  ManagementCidr:
+    Description: The CIDR range to acess the instance
+    Type: String
+  ProvisionedIops:
+    ConstraintDescription: Range is 100 to 20000 for Provisioned IOPS SSD volumes
+    Description: Set the provisioned IOPs between 100 and 20000. Only set if you are
+      choosing io1 for your volume type
+    Type: String
+  QSS3BucketName:
+    AllowedPattern: "^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$"
+    ConstraintDescription: Quick Start bucket name can include numbers, lowercase
+      letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen
+      (-).
+    Default: quickstart-reference
+    Description: S3 bucket name for the Quick Start assets. Quick Start bucket name
+      can include numbers, lowercase letters, uppercase letters, and hyphens (-).
+      It cannot start or end with a hyphen (-).
+    Type: String
+  QSS3KeyPrefix:
+    AllowedPattern: "^[0-9a-zA-Z-]+(/[0-9a-zA-Z-]+)*/"
+    ConstraintDescription: Quick Start key prefix can include numbers, lowercase letters,
+      uppercase letters, hyphens (-), and forward slash (/). It cannot start with
+      forward slash (/) because is it automatically added.
+    Default: github/enterprise/latest/
+    Description: S3 key prefix for the Quick Start assets. Quick Start key prefix
+      can include numbers, lowercase letters, uppercase letters, hyphens (-), and
+      forward slash (/). It cannot start with forward slash (/) because it is automatically
+      added.
+    Type: String
+  SiteAdminUserEmail:
+    Description: Site Admin Email address
+    Type: String
+  SiteAdminUserPassword:
+    AllowedPattern: "(?=.*\\d)(?=.*[a-z])(?=.*[A-Z])[a-zA-Z0-9]*"
+    ConstraintDescription: Passwords must be at least 7 characters long and include
+      at least one number and one upper case letter.
+    Description: Set the Console password for Github Enterprise (Passwords must be
+      at least 7 characters long and include at least one number and one upper case
+      letter)
+    MinLength: '7'
+    NoEcho: 'True'
+    Type: String
+  SiteAdminUsername:
+    Description: Set the Site Admin Username (cannot be "admin").
+    Type: String
+  SubnetId:
+    Description: The subnet where the GitHub Enterprise instance will be launched
+    Type: AWS::EC2::Subnet::Id
+  VpcId:
+    Description: The VPC to launch the GitHub Enterprise server
+    Type: AWS::EC2::VPC::Id
+  VolumeSize:
+    Default: '100'
+    Description: The size of the EBS attached volume
+    Type: String
+  VolumeType:
+    AllowedValues:
+      - gp2
+      - io1
+    Description: Choose either GP2 or IO1. IO1 is recommended for more than 500 users
+    Default: gp2
+    Type: String
+  RootVolumeSecurityClassification:
+    Type: String
+    Description: The security classification of the root volume of the instance.
+    Default: groupuseonly
+    AllowedValues:
+      - public
+      - confidential
+      - groupuseonly
+      - customerandpersonal
+      - highlyprotected
+  DataVolumeSecurityClassification:
+    Type: String
+    Description: The security classification of the data volume of the instance.
+    Default: confidential
+    AllowedValues:
+      - public
+      - confidential
+      - groupuseonly
+      - customerandpersonal
+      - highlyprotected
+
+Resources:
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Metadata:
+      AWS::CloudFormation::Init:
+        config:
+          files:
+            "/etc/gheadmin.conf":
+              content:
+                Fn::Join:
+                  - ''
+                  - - 'github_console_password:'
+                    - Ref: ManagementPassword
+                    - "\n"
+                    - 'github_s3_bucket:'
+                    - Ref: LicenseLocation
+                    - "\n"
+                    - 'github_adminuser_name:'
+                    - Ref: SiteAdminUsername
+                    - "\n"
+                    - 'github_adminuser_email:'
+                    - Ref: SiteAdminUserEmail
+                    - "\n"
+                    - 'github_adminuser_password:'
+                    - Ref: SiteAdminUserPassword
+                    - "\n"
+                    - 'github_organization:'
+                    - Ref: InitialOrganization
+                    - "\n"
+                    - 'github_repository:'
+                    - Ref: InitialRepository
+                    - "\n"
+                    - 'github_license_file:'
+                    - Ref: GHELicense
+                    - "\n"
+              group: root
+              mode: '000400'
+              user: root
+            '/tmp/tag_own_volumes.py':
+              content: !Sub |
+                #!/usr/bin/python
+                # Propagate security tag to volumes
+                import boto3, urllib2, socket
+                ec2 = boto3.resource('ec2', region_name='${AWS::Region}')
+                instance_id = urllib2.urlopen('http://169.254.169.254/latest/meta-data/instance-id').read()
+                instance = ec2.Instance(instance_id)
+                for volume in instance.volumes.all():
+                  tag_val = '${DataVolumeSecurityClassification}'
+                  if volume.attachments[0]['Device'] == '/dev/sda1':
+                     tag_val = '${RootVolumeSecurityClassification}'
+                  tag = {'Key': 'DataClassification', 'Value': tag_val}
+                  volume.create_tags(Tags=[tag])
+              mode: '000700'
+              owner: root
+              group: root
+          commands:
+            0-tag_own_volumes.py:
+              command: '/tmp/tag_own_volumes.py'
+              ignoreErrors: 'false'
+    Properties:
+      BlockDeviceMappings:
+        - DeviceName: "/dev/xvdf"
+          Ebs:
+            Encrypted: true
+            Iops:
+              Fn::If:
+                - Io1Set
+                - Ref: ProvisionedIops
+                - Ref: AWS::NoValue
+            VolumeSize:
+              Ref: VolumeSize
+            VolumeType:
+              Ref: VolumeType
+      EbsOptimized: 'true'
+      IamInstanceProfile:
+        Ref: EC2InstanceProfile
+      ImageId:
+        Fn::FindInMap:
+          - AWSAMIRegionMap
+          - Ref: AWS::Region
+          - AMI
+      InstanceType:
+        Ref: InstanceType
+      KeyName:
+        Ref: KeyPairName
+      SecurityGroupIds:
+        - Ref: InstanceSecurityGroup
+        - Ref: AccessSecurityGroup
+      SubnetId:
+        Ref: SubnetId
+      Tags:
+        - Key: Name
+          Value: !Ref AWS::StackName
+        - Key: DataClassification
+          Value: !Ref DataVolumeSecurityClassification
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash -ex
+          EC2_IP=`curl http://169.254.169.254/latest/meta-data/local-ipv4`
+          export no_proxy=169.254.169.254,$EC2_IP,localhost
+          export NO_PROXY=$no_proxy
+          export HTTP_PROXY=${ProxyEndpoint}
+          export HTTPS_PROXY=${ProxyEndpoint}
+          export http_proxy=${ProxyEndpoint}
+          export https_proxy=${ProxyEndpoint}
+          easy_install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz
+          wget https://bootstrap.pypa.io/get-pip.py
+          sudo python get-pip.py
+          sudo pip install awscli boto3
+          /usr/local/bin/cfn-init --stack ${AWS::StackName} --resource EC2Instance --region ${AWS::Region}
+          # START scripts_user_data.sh
+          DATE=`date +%d-%m-%Y`
+          date >/root/install_date
+          ##########################################
+          # Check status function
+          ##########################################
+          function chkstatus () {
+          if [ $1 -eq $2 ]
+          then
+            echo "Script $0 [PASS]"
+          else
+            echo "Script $0 [FAILED]" >&2
+            exit 1
+          fi
+          }
+          ###########################################
+          #  Configure the GitHub Enterprise server
+          ###########################################
+          AWS_CMD='/usr/local/bin/aws'
+          # ARGS for script
+          # 1: GHE_CONSOLE_PASSWORD
+          # 2: GHE_S3_BUCKET
+          # 3: GHE_LICENSE
+          # Copy down the license file from the S3 Bucket
+          $AWS_CMD s3 cp s3://${LicenseLocation}/${GHELicense} /tmp/github-enterprise.ghl
+          sleep 60
+          #Upload the license and set the GitHub Enterprise Admin password
+          START_SETUP=`curl -o /dev/null -i -k -L --write-out '%{http_code}' -F license=@/tmp/github-enterprise.ghl -F password=${ManagementPassword} -X POST https://$EC2_IP:8443/setup/api/start`
+          RETURN_START=`echo $START_SETUP | awk -F' ' '{print $NF}'`
+          echo "HTTP status code for start setup: " $RETURN_START
+          chkstatus $RETURN_START 202
+          echo "Return from chkstatus:" $?
+          [[ $? -ne 0 ]] && exit 1
+          # Initiate the configuration process
+          INITIATE_CONFIG=$(curl -i -k -L --write-out '%{http_code}' --silent -X POST https://api_key:${ManagementPassword}@$EC2_IP:8443/setup/api/configure)
+          RETURN_INITIATE=`echo $INITIATE_CONFIG | awk -F' ' '{print $NF}'`
+          echo "HTTP status code for initiate config: " $RETURN_INITIATE
+          chkstatus $RETURN_INITIATE 202
+          echo "Return from chkstatus:" $?
+          [[ $? -ne 0 ]] && exit 1
+          # Check the configuration status and continue to check until the configuration is complete
+          CONFIG_STATUS=`curl -k -L https://api_key:${ManagementPassword}@$EC2_IP:8443/setup/api/configcheck | awk -F, '{print $NF}' | awk -F: '{print $NF}' |tail -n1 `
+          while [[ $CONFIG_STATUS != *'DONE'* ]]; do
+            sleep 2
+            echo date
+            echo 'Waiting for config status to contain done for Reloading application services'
+            echo $CONFIG_STATUS
+            CONFIG_STATUS=`curl -k -L https://api_key:${ManagementPassword}@localhost:8443/setup/api/configcheck | awk -F, '{print $NF}' | awk -F: '{print $NF}' |tail -n1 `
+          done
+          # END scripts_user_data.sh
+          # Create admin user
+          cat <<-EOF | ghe-console -y > /dev/null
+            exit 1 if !GitHub.enterprise_first_run?
+
+            USER = "${SiteAdminUsername}"
+            EMAIL = "${SiteAdminUserEmail}"
+            PASSWD = "${SiteAdminUserPassword}"
+
+            user = User.create_with_random_password USER
+            user.email = EMAIL
+            user.password = user.password_confirmation = PASSWD
+            if user.valid?
+              user.save
+            end
+          EOF
+          /usr/local/bin/cfn-signal -e $? '${WaitforGitHubEnterpriseInstall}'
+  GitHubWaitCondition:
+    Type: AWS::CloudFormation::WaitCondition
+    DependsOn: EC2Instance
+    Properties:
+      Handle:
+        Ref: WaitforGitHubEnterpriseInstall
+      Timeout: '500'
+  WaitforGitHubEnterpriseInstall:
+    Type: AWS::CloudFormation::WaitConditionHandle
+  AccessSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Access to SSH for the management CIDR
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - CidrIp: !Ref ManagementCidr
+          IpProtocol: tcp
+          FromPort: 122
+          ToPort: 122
+        - CidrIp: !Ref ManagementCidr
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+        - CidrIp: !Ref ManagementCidr
+          IpProtocol: tcp
+          FromPort: 8443
+          ToPort: 8443
+  EC2InstanceProfile:
+    Properties:
+      Path: "/"
+      Roles:
+        - Ref: EC2InstanceRole
+    Type: AWS::IAM::InstanceProfile
+  EC2InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+      Path: "/"
+      Policies:
+        - PolicyName: "TagOwnVolumes"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              # TODO: Move volumes to own template to be tagged on provision
+              - Effect: Allow
+                Action:
+                  - ec2:CreateTags
+                  - ec2:DescribeInstances
+                  - ec2:DescribeVolumes
+                Resource:
+                  - '*'
+
+  InstanceSecurityGroup:
+    Properties:
+      GroupDescription: Ports needed for GitHub Enterprise
+      SecurityGroupIngress:
+        - CidrIp:
+            Ref: AccessCIDR
+          FromPort: '22'
+          IpProtocol: tcp
+          ToPort: '22'
+        - CidrIp:
+            Ref: AccessCIDR
+          FromPort: '8080'
+          IpProtocol: tcp
+          ToPort: '8080'
+        - CidrIp:
+            Ref: AccessCIDR
+          FromPort: '122'
+          IpProtocol: tcp
+          ToPort: '122'
+        - CidrIp:
+            Ref: AccessCIDR
+          FromPort: '1194'
+          IpProtocol: udp
+          ToPort: '1194'
+        - CidrIp:
+            Ref: AccessCIDR
+          FromPort: '161'
+          IpProtocol: udp
+          ToPort: '161'
+        - CidrIp:
+            Ref: AccessCIDR
+          FromPort: '443'
+          IpProtocol: tcp
+          ToPort: '443'
+        - CidrIp:
+            Ref: AccessCIDR
+          FromPort: '80'
+          IpProtocol: tcp
+          ToPort: '80'
+        - CidrIp:
+            Ref: AccessCIDR
+          FromPort: '9418'
+          IpProtocol: tcp
+          ToPort: '9418'
+        - CidrIp:
+            Ref: AccessCIDR
+          FromPort: '25'
+          IpProtocol: tcp
+          ToPort: '25'
+        - CidrIp:
+            Ref: AccessCIDR
+          FromPort: '8443'
+          IpProtocol: tcp
+          ToPort: '8443'
+      VpcId:
+        Ref: VpcId
+    Type: AWS::EC2::SecurityGroup
+
+Outputs:
+  AvailabilityZone:
+    Description: Availability Zone of the newly created EC2 instance
+    Value:
+      Fn::GetAtt:
+        - EC2Instance
+        - AvailabilityZone
+  EC2InstanceId:
+    Description: InstanceId of the newly created EC2 instance
+    Value:
+      Ref: EC2Instance
+  EC2InstanceProfileId:
+    Description: ID of the Instance Profile
+    Value:
+      Ref: EC2InstanceProfile
+  EC2RoleId:
+    Description: ID of the Role
+    Value:
+      Ref: EC2InstanceRole
+  GHEURL:
+    Description: URL of the primary instance
+    Value:
+      Fn::Join:
+        - ''
+        - - http://
+          - Fn::GetAtt:
+              - EC2Instance
+              - PrivateIp
